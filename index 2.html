@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>GrineOS — Allocation Intelligence Platform</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Outfit:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+html,body,#root{height:100%;width:100%}
+body{background:#05080f;color:#e8ecf4;font-family:'Outfit',sans-serif}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+@keyframes slideIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}
+::-webkit-scrollbar{width:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#1a2744;border-radius:3px}
+input:focus,textarea:focus{border-color:#00e5ff!important;box-shadow:0 0 0 2px rgba(0,229,255,0.08)!important;outline:none}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const {useState,useEffect,useRef,useCallback}=React;
+
+const API="https://grine-platform-production.up.railway.app";
+
+const T={display:"'Playfair Display',serif",body:"'Outfit',sans-serif",mono:"'IBM Plex Mono',monospace"};
+const C={bg:"#05080f",bgAlt:"#0a1020",surface:"#0d1424",raised:"#111b30",border:"#1a2744",cyan:"#00e5ff",cyanDim:"rgba(0,229,255,0.08)",gold:"#d4a853",goldDim:"rgba(212,168,83,0.10)",green:"#00e676",red:"#ff5252",text:"#e8ecf4",soft:"#8899b8",faint:"#4a5d80"};
+
+const inp={width:"100%",padding:"11px 14px",borderRadius:8,border:`1px solid ${C.border}`,background:C.bg,color:C.text,fontFamily:T.body,fontSize:13,outline:"none",transition:"all .2s"};
+const btnB={padding:"10px 22px",borderRadius:8,border:"none",fontFamily:T.body,fontSize:13,fontWeight:600,cursor:"pointer",transition:"all .15s"};
+const btnC={...btnB,background:`linear-gradient(135deg,${C.cyan},#00b8d4)`,color:C.bg};
+const btnG={...btnB,background:"transparent",border:`1px solid ${C.border}`,color:C.soft};
+const lbl={display:"block",fontSize:11,fontWeight:600,color:C.soft,textTransform:"uppercase",letterSpacing:".06em",marginBottom:6};
+const rBox={marginTop:24,background:C.surface,borderRadius:12,border:`1px solid ${C.border}`,padding:24};
+const pre={fontFamily:T.mono,fontSize:12,color:C.text,lineHeight:1.7,whiteSpace:"pre-wrap",overflowX:"auto",wordBreak:"break-word"};
+const eBox={marginTop:16,padding:"10px 14px",borderRadius:8,background:"rgba(255,82,82,0.06)",border:`1px solid ${C.red}22`,color:C.red,fontSize:12};
+
+const apiFetch=async(path,token,opts={})=>{
+  const h={"Content-Type":"application/json",...(token?{Authorization:`Bearer ${token}`}:{}),...(opts.headers||{})};
+  const r=await fetch(`${API}${path}`,{...opts,headers:h});
+  const d=await r.json();
+  if(!r.ok)throw new Error(d.detail||JSON.stringify(d));
+  return d;
+};
+
+const Spin=({size=14})=>React.createElement("span",{style:{display:"inline-block",width:size,height:size,border:`2px solid ${C.border}`,borderTopColor:C.cyan,borderRadius:"50%",animation:"spin .6s linear infinite",marginRight:6,verticalAlign:"middle"}});
+const Dot=({ok})=>React.createElement("span",{style:{display:"inline-block",width:7,height:7,borderRadius:"50%",background:ok?C.green:C.red,boxShadow:`0 0 6px ${ok?C.green:C.red}`,marginRight:8}});
+const Badge=({children,color=C.cyan})=>React.createElement("span",{style:{display:"inline-block",padding:"3px 10px",borderRadius:20,fontSize:10,fontWeight:600,letterSpacing:"0.06em",background:`${color}18`,color,fontFamily:T.mono,textTransform:"uppercase"}},children);
+
+/* ═══ AUTH ═══ */
+function AuthScreen({onAuth}){
+  const[mode,setMode]=useState("login");
+  const[email,setEmail]=useState("");
+  const[pw,setPw]=useState("");
+  const[tenant,setTenant]=useState("");
+  const[loading,setLoading]=useState(false);
+  const[err,setErr]=useState("");
+
+  const go=async()=>{
+    setLoading(true);setErr("");
+    try{
+      if(mode==="register"){
+        await apiFetch("/api/v1/auth/register",null,{method:"POST",body:JSON.stringify({tenant_name:tenant||"Default",tenant_slug:(tenant||"default").toLowerCase().replace(/\s+/g,"-"),admin_email:email,admin_password:pw})});
+        setMode("login");alert("Account created — now sign in.");
+      }else{
+        const body=new URLSearchParams({username:email,password:pw});
+        const r=await fetch(`${API}/api/v1/auth/login`,{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body});
+        const d=await r.json();if(!r.ok)throw new Error(d.detail||"Login failed");
+        onAuth(d.access_token,email);
+      }
+    }catch(e){setErr(e.message)}finally{setLoading(false)}
+  };
+
+  return React.createElement("div",{style:{minHeight:"100vh",background:`radial-gradient(ellipse at 30% 20%,${C.bgAlt},${C.bg} 70%)`,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:T.body,color:C.text,padding:24}},
+    React.createElement("div",{style:{animation:"fadeUp .6s ease",maxWidth:420,width:"100%"}},
+      React.createElement("div",{style:{textAlign:"center",marginBottom:48}},
+        React.createElement("div",{style:{fontFamily:T.display,fontSize:38,fontWeight:700,color:C.cyan,letterSpacing:"-0.02em"}},"GrineOS"),
+        React.createElement("div",{style:{fontSize:13,color:C.soft,marginTop:6,letterSpacing:"0.12em",textTransform:"uppercase",fontWeight:300}},"Allocation Intelligence Platform")
+      ),
+      React.createElement("div",{style:{background:C.surface,borderRadius:16,border:`1px solid ${C.border}`,padding:32,boxShadow:"0 24px 80px rgba(0,0,0,0.4)"}},
+        React.createElement("div",{style:{display:"flex",marginBottom:28}},
+          ["login","register"].map(m=>React.createElement("button",{key:m,onClick:()=>{setMode(m);setErr("")},style:{flex:1,padding:"10px 0",background:mode===m?C.cyanDim:"transparent",color:mode===m?C.cyan:C.faint,border:`1px solid ${mode===m?C.cyan+"44":C.border}`,borderRadius:m==="login"?"8px 0 0 8px":"0 8px 8px 0",fontFamily:T.mono,fontSize:11,fontWeight:600,cursor:"pointer",textTransform:"uppercase",letterSpacing:"0.08em",transition:"all .2s"}},m))
+        ),
+        mode==="register"&&React.createElement("div",{style:{marginBottom:16}},
+          React.createElement("label",{style:lbl},"Tenant / Firm Name"),
+          React.createElement("input",{style:inp,value:tenant,onChange:e=>setTenant(e.target.value),placeholder:"My Firm"})
+        ),
+        React.createElement("label",{style:lbl},"Email"),
+        React.createElement("input",{style:inp,type:"email",value:email,onChange:e=>setEmail(e.target.value),placeholder:"analyst@firm.com"}),
+        React.createElement("div",{style:{height:16}}),
+        React.createElement("label",{style:lbl},"Password"),
+        React.createElement("input",{style:inp,type:"password",value:pw,onChange:e=>setPw(e.target.value),placeholder:"••••••••",onKeyDown:e=>e.key==="Enter"&&go()}),
+        err&&React.createElement("div",{style:eBox},err),
+        React.createElement("button",{onClick:go,disabled:loading,style:{...btnC,width:"100%",marginTop:24,opacity:loading?0.5:1}},loading&&React.createElement(Spin,null),mode==="login"?"Sign In":"Create Account")
+      ),
+      React.createElement("div",{style:{textAlign:"center",marginTop:28,fontSize:11,color:C.faint}},"Grine Technologies Ltd · A KG&Co Company")
+    )
+  );
+}
+
+/* ═══ TABS ═══ */
+const TABS=[{id:"demo",label:"Demo",icon:"▶"},{id:"agent",label:"Agent",icon:"◈"},{id:"optimize",label:"Optimize",icon:"⬡"},{id:"backtest",label:"Backtest",icon:"◫"},{id:"scenarios",label:"Scenarios",icon:"◇"},{id:"portfolios",label:"Portfolios",icon:"▦"},{id:"analytics",label:"Analytics",icon:"◉"}];
+
+function AgentTab({token}){
+  const[input,setInput]=useState("");
+  const[msgs,setMsgs]=useState([]);
+  const[loading,setLoading]=useState(false);
+  const[demoP,setDemoP]=useState(null);
+  const endRef=useRef(null);
+  useEffect(()=>{endRef.current?.scrollIntoView({behavior:"smooth"})},[msgs]);
+  useEffect(()=>{apiFetch("/api/v1/demo/portfolio",token).then(setDemoP).catch(()=>{})},[token]);
+
+  const send=async()=>{
+    if(!input.trim()||loading)return;
+    const q=input.trim();setInput("");
+    setMsgs(p=>[...p,{role:"user",content:q}]);
+    setLoading(true);
+    try{
+      const portfolio=demoP||{id:"default",name:"Default",client_name:"Client",holdings:[],as_of_date:new Date().toISOString().split("T")[0]};
+      const d=await apiFetch("/api/v1/agent/chat",token,{method:"POST",body:JSON.stringify({message:q,portfolio})});
+      setMsgs(p=>[...p,{role:"ai",content:d.response||d.message||JSON.stringify(d,null,2)}]);
+    }catch(e){setMsgs(p=>[...p,{role:"err",content:e.message}])}
+    finally{setLoading(false)}
+  };
+
+  const prompts=["What are the biggest risks in this portfolio?","Optimize for maximum Sharpe ratio","Run a 2008-style stress test"];
+
+  return React.createElement("div",{style:{display:"flex",flexDirection:"column",height:"100%"}},
+    React.createElement("div",{style:{flex:1,overflowY:"auto",padding:"28px 32px",display:"flex",flexDirection:"column",gap:14}},
+      msgs.length===0&&React.createElement("div",{style:{flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:20}},
+        React.createElement("div",{style:{fontFamily:T.display,fontSize:56,color:C.cyan,opacity:0.08,fontWeight:700}},"G"),
+        React.createElement("div",{style:{color:C.soft,fontSize:14}},"Agent ready. Describe an allocation task."),
+        React.createElement("div",{style:{display:"flex",gap:10,flexWrap:"wrap",justifyContent:"center",maxWidth:600}},
+          prompts.map((p,i)=>React.createElement("button",{key:i,onClick:()=>setInput(p),style:{...btnG,fontSize:11,padding:"8px 14px",borderRadius:20,maxWidth:220,textAlign:"left",lineHeight:1.5}},p))
+        )
+      ),
+      msgs.map((m,i)=>React.createElement("div",{key:i,style:{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start",animation:"slideIn .3s ease"}},
+        React.createElement("div",{style:{maxWidth:"72%",padding:"14px 18px",borderRadius:14,fontSize:13,lineHeight:1.7,whiteSpace:"pre-wrap",fontFamily:m.role==="ai"?T.mono:T.body,
+          ...(m.role==="user"?{background:C.cyanDim,border:`1px solid ${C.cyan}22`,color:C.text}:
+            m.role==="err"?{background:"rgba(255,82,82,0.06)",border:`1px solid ${C.red}22`,color:C.red}:
+            {background:C.raised,border:`1px solid ${C.border}`,color:C.text})}},
+          m.role==="ai"&&React.createElement("div",{style:{fontSize:9,color:C.gold,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:8,fontFamily:T.mono}},"Grine Agent"),
+          m.content
+        )
+      )),
+      loading&&React.createElement("div",{style:{color:C.soft,fontSize:12,display:"flex",alignItems:"center"}},React.createElement(Spin,null),"Processing..."),
+      React.createElement("div",{ref:endRef})
+    ),
+    React.createElement("div",{style:{padding:"14px 32px 20px",borderTop:`1px solid ${C.border}`,display:"flex",gap:10}},
+      React.createElement("input",{style:{...inp,flex:1},value:input,onChange:e=>setInput(e.target.value),onKeyDown:e=>e.key==="Enter"&&send(),placeholder:"Describe your allocation task..."}),
+      React.createElement("button",{onClick:send,disabled:loading||!input.trim(),style:{...btnC,opacity:loading||!input.trim()?0.3:1}},"Run")
+    )
+  );
+}
+
+function DemoTab({token}){
+  const[data,setData]=useState(null);const[loading,setLoading]=useState(true);
+  useEffect(()=>{apiFetch("/api/v1/demo/portfolio",token).then(setData).catch(e=>setData({error:e.message})).finally(()=>setLoading(false))},[token]);
+
+  if(loading)return React.createElement("div",{style:{padding:32,color:C.soft,fontSize:12}},React.createElement(Spin,null),"Loading demo portfolio...");
+
+  const p=data;
+  const holdings=p&&p.holdings?p.holdings:[];
+  const total=holdings.reduce((s,h)=>s+(h.value||0),0);
+
+  return React.createElement("div",{style:{padding:32,maxWidth:960,animation:"fadeUp .4s ease"}},
+    React.createElement("h2",{style:{fontFamily:T.display,fontSize:24,fontWeight:600,marginBottom:4}},"Demo Portfolio"),
+    React.createElement("p",{style:{color:C.soft,fontSize:13,marginBottom:28}},p?.client_name||"Sample"," · $",total.toLocaleString()),
+    holdings.length>0&&React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:12}},
+      holdings.map((h,i)=>{
+        const pct=total>0?((h.value/total)*100).toFixed(1):0;
+        return React.createElement("div",{key:i,style:{background:C.surface,borderRadius:12,border:`1px solid ${C.border}`,padding:18}},
+          React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}},
+            React.createElement("span",{style:{fontFamily:T.mono,fontWeight:600,fontSize:14,color:C.cyan}},h.ticker),
+            React.createElement(Badge,{color:C.gold},h.asset_class)
+          ),
+          React.createElement("div",{style:{fontSize:12,color:C.soft,marginBottom:8}},h.name),
+          React.createElement("div",{style:{display:"flex",justifyContent:"space-between",fontSize:12}},
+            React.createElement("span",{style:{color:C.text}},"$",h.value?.toLocaleString()),
+            React.createElement("span",{style:{color:C.gold,fontFamily:T.mono}},pct,"%")
+          ),
+          React.createElement("div",{style:{marginTop:8,height:4,background:C.bg,borderRadius:2,overflow:"hidden"}},
+            React.createElement("div",{style:{height:"100%",width:`${pct}%`,background:`linear-gradient(90deg,${C.cyan},${C.gold})`,borderRadius:2}})
+          )
+        );
+      })
+    ),
+    React.createElement("div",{style:rBox},
+      React.createElement("div",{style:{fontSize:11,color:C.gold,fontWeight:700,textTransform:"uppercase",letterSpacing:".1em",marginBottom:12,fontFamily:T.mono}},"Raw JSON"),
+      React.createElement("pre",{style:pre},JSON.stringify(data,null,2))
+    )
+  );
+}
+
+function FormTab({token,title,desc,endpoint,fields,method="POST"}){
+  const defaults={};fields.forEach(f=>{defaults[f.key]=f.default||""});
+  const[form,setForm]=useState(defaults);
+  const[result,setResult]=useState(null);const[loading,setLoading]=useState(false);const[err,setErr]=useState("");
+
+  const run=async()=>{
+    setLoading(true);setErr("");setResult(null);
+    try{
+      let body=form;
+      if(form._transform)body=form._transform(form);
+      const d=await apiFetch(endpoint,token,{method,body:JSON.stringify(body)});
+      setResult(d);
+    }catch(e){setErr(e.message)}finally{setLoading(false)}
+  };
+
+  return React.createElement("div",{style:{padding:32,maxWidth:900,animation:"fadeUp .4s ease"}},
+    React.createElement("h2",{style:{fontFamily:T.display,fontSize:24,fontWeight:600,marginBottom:4}},title),
+    React.createElement("p",{style:{color:C.soft,fontSize:13,marginBottom:28}},desc),
+    React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:24}},
+      fields.map(f=>React.createElement("div",{key:f.key,style:f.full?{gridColumn:"1/-1"}:{}},
+        React.createElement("label",{style:lbl},f.label),
+        f.type==="select"?
+          React.createElement("div",{style:{display:"flex",gap:8}},
+            f.options.map(o=>React.createElement("button",{key:o,onClick:()=>setForm({...form,[f.key]:o}),style:{...btnG,flex:1,borderColor:form[f.key]===o?C.cyan:C.border,color:form[f.key]===o?C.cyan:C.soft,background:form[f.key]===o?C.cyanDim:"transparent",textTransform:"capitalize"}},o))
+          ):
+          React.createElement("input",{style:{...inp,colorScheme:"dark"},type:f.type||"text",value:form[f.key],onChange:e=>setForm({...form,[f.key]:e.target.value})})
+      ))
+    ),
+    React.createElement("button",{onClick:run,disabled:loading,style:{...btnC,opacity:loading?0.5:1}},loading&&React.createElement(Spin,null),"Run"),
+    err&&React.createElement("div",{style:eBox},err),
+    result&&React.createElement("div",{style:rBox},React.createElement("pre",{style:pre},JSON.stringify(result,null,2)))
+  );
+}
+
+function ScenariosTab({token}){
+  const[scenarios,setScenarios]=useState(null);const[selected,setSelected]=useState("");const[result,setResult]=useState(null);const[loading,setLoading]=useState(false);const[err,setErr]=useState("");
+  const[demoP,setDemoP]=useState(null);
+
+  useEffect(()=>{
+    apiFetch("/api/v1/scenarios",token).then(setScenarios).catch(()=>{});
+    apiFetch("/api/v1/demo/portfolio",token).then(setDemoP).catch(()=>{});
+  },[token]);
+
+  const run=async(name)=>{
+    setLoading(true);setErr("");setResult(null);setSelected(name);
+    try{const d=await apiFetch(`/api/v1/scenario/${name}`,token,{method:"POST",body:JSON.stringify(demoP||{})});setResult(d)}catch(e){setErr(e.message)}finally{setLoading(false)}
+  };
+
+  return React.createElement("div",{style:{padding:32,maxWidth:900,animation:"fadeUp .4s ease"}},
+    React.createElement("h2",{style:{fontFamily:T.display,fontSize:24,fontWeight:600,marginBottom:4}},"Scenario Engine"),
+    React.createElement("p",{style:{color:C.soft,fontSize:13,marginBottom:28}},"Stress test against macro scenarios"),
+    scenarios&&Array.isArray(scenarios)?
+      React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:10,marginBottom:24}},
+        scenarios.map((s,i)=>{const n=typeof s==="string"?s:s.name||s.id||`Scenario ${i}`;return React.createElement("button",{key:i,onClick:()=>run(n),style:{...btnG,borderColor:selected===n?C.gold:C.border,color:selected===n?C.gold:C.soft,background:selected===n?C.goldDim:"transparent"}},n)})
+      ):React.createElement("div",{style:{color:C.faint,fontSize:13}},"Loading..."),
+    loading&&React.createElement("div",{style:{color:C.soft,fontSize:12,display:"flex",alignItems:"center"}},React.createElement(Spin,null),"Running..."),
+    err&&React.createElement("div",{style:eBox},err),
+    result&&React.createElement("div",{style:rBox},React.createElement("pre",{style:pre},JSON.stringify(result,null,2)))
+  );
+}
+
+function PortfoliosTab({token}){
+  const[data,setData]=useState(null);const[loading,setLoading]=useState(true);const[err,setErr]=useState("");
+  const load=()=>{setLoading(true);apiFetch("/api/v1/portfolios",token).then(d=>{setData(d);setLoading(false)}).catch(e=>{setErr(e.message);setLoading(false)})};
+  useEffect(()=>{load()},[token]);
+
+  return React.createElement("div",{style:{padding:32,maxWidth:900,animation:"fadeUp .4s ease"}},
+    React.createElement("div",{style:{display:"flex",justifyContent:"space-between",marginBottom:28}},
+      React.createElement("div",null,
+        React.createElement("h2",{style:{fontFamily:T.display,fontSize:24,fontWeight:600,marginBottom:4}},"Saved Portfolios"),
+        React.createElement("p",{style:{color:C.soft,fontSize:13}},"Persisted allocations")
+      ),
+      React.createElement("button",{onClick:load,style:btnG},"Refresh")
+    ),
+    loading?React.createElement("div",{style:{color:C.soft,fontSize:12}},React.createElement(Spin,null),"Loading..."):
+    err?React.createElement("div",{style:eBox},err):
+    data&&(Array.isArray(data)?data:[data]).length>0?
+      React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:12}},
+        (Array.isArray(data)?data:[data]).map((p,i)=>React.createElement("div",{key:i,style:{background:C.surface,borderRadius:12,border:`1px solid ${C.border}`,padding:20}},
+          React.createElement("pre",{style:pre},JSON.stringify(p,null,2))
+        ))
+      ):React.createElement("div",{style:{color:C.faint,fontSize:13}},"No saved portfolios yet.")
+  );
+}
+
+/* ═══ DASHBOARD ═══ */
+function Dashboard({token,userEmail,onLogout}){
+  const[tab,setTab]=useState("demo");
+  const[health,setHealth]=useState(null);
+  useEffect(()=>{fetch(`${API}/health`).then(r=>r.json()).then(setHealth).catch(()=>setHealth({status:"error"}))},[]);
+
+  let content;
+  if(tab==="demo") content=React.createElement(DemoTab,{token});
+  else if(tab==="agent") content=React.createElement(AgentTab,{token});
+  else if(tab==="scenarios") content=React.createElement(ScenariosTab,{token});
+  else if(tab==="portfolios") content=React.createElement(PortfoliosTab,{token});
+  else if(tab==="analytics") content=React.createElement(FormTab,{token,title:"Full Analytics",desc:"Comprehensive risk analysis",endpoint:"/api/v1/analytics/full",method:"POST",fields:[]});
+  else if(tab==="optimize") content=React.createElement(FormTab,{token,title:"Portfolio Optimizer",desc:"Ledoit-Wolf shrinkage · cvxpy convex optimization",endpoint:"/api/v1/optimize",method:"POST",fields:[
+    {key:"objective",label:"Objective",type:"select",options:["max_sharpe","min_variance","risk_parity"],default:"max_sharpe",full:true}
+  ]});
+  else if(tab==="backtest") content=React.createElement(FormTab,{token,title:"Backtest Engine",desc:"Historical simulation with drawdown analysis",endpoint:"/api/v1/backtest",method:"POST",fields:[
+    {key:"period",label:"Period",default:"3y"},{key:"rebalance_freq",label:"Rebalance",type:"select",options:["monthly","quarterly","annually"],default:"monthly"}
+  ]});
+
+  return React.createElement("div",{style:{minHeight:"100vh",background:C.bg,fontFamily:T.body,color:C.text,display:"flex"}},
+    React.createElement("aside",{style:{width:220,borderRight:`1px solid ${C.border}`,display:"flex",flexDirection:"column",background:C.bgAlt,flexShrink:0}},
+      React.createElement("div",{style:{padding:"24px 20px 20px",borderBottom:`1px solid ${C.border}`}},
+        React.createElement("div",{style:{fontFamily:T.display,fontSize:22,fontWeight:700,color:C.cyan,letterSpacing:"-0.02em"}},"GrineOS"),
+        React.createElement("div",{style:{fontSize:10,color:C.faint,letterSpacing:"0.1em",textTransform:"uppercase",marginTop:2}},"v2.0.0")
+      ),
+      React.createElement("nav",{style:{flex:1,padding:"12px 10px",display:"flex",flexDirection:"column",gap:2}},
+        TABS.map(t=>React.createElement("button",{key:t.id,onClick:()=>setTab(t.id),style:{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:8,border:"none",background:tab===t.id?C.cyanDim:"transparent",color:tab===t.id?C.cyan:C.soft,fontFamily:T.body,fontSize:13,fontWeight:tab===t.id?600:400,cursor:"pointer",transition:"all .15s",textAlign:"left"}},
+          React.createElement("span",{style:{fontFamily:T.mono,fontSize:14,width:20,textAlign:"center"}},t.icon),t.label
+        ))
+      ),
+      React.createElement("div",{style:{padding:"16px 16px 20px",borderTop:`1px solid ${C.border}`,fontSize:12}},
+        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6,marginBottom:8}},
+          React.createElement(Dot,{ok:health?.status==="healthy"||health?.status==="ok"}),
+          "API ",
+          React.createElement(Badge,{color:health?.status==="healthy"||health?.status==="ok"?C.green:C.red},health?.status||"...")
+        ),
+        React.createElement("div",{style:{color:C.faint,fontSize:11,marginTop:12}},userEmail),
+        React.createElement("button",{onClick:onLogout,style:{...btnG,width:"100%",marginTop:10,fontSize:11,padding:"7px 0",color:C.red,borderColor:C.red+"44"}},"Sign Out")
+      )
+    ),
+    React.createElement("main",{style:{flex:1,overflow:"auto",display:"flex",flexDirection:"column"}},content)
+  );
+}
+
+function App(){
+  const[token,setToken]=useState(null);
+  const[email,setEmail]=useState("");
+  return token?
+    React.createElement(Dashboard,{token,userEmail:email,onLogout:()=>{setToken(null);setEmail("")}}):
+    React.createElement(AuthScreen,{onAuth:(t,e)=>{setToken(t);setEmail(e)}});
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(React.createElement(App));
+</script>
+</body>
+</html>
