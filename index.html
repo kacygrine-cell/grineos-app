@@ -4,6 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>GrineOS — Allocation Intelligence Platform</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='%2300e5ff'/><text x='50%25' y='55%25' dominant-baseline='central' text-anchor='middle' font-family='serif' font-size='20' font-weight='bold' fill='%23050810'>G</text></svg>"/>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600;700&family=Outfit:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet"/>
 <style>
@@ -13,6 +14,7 @@ body{background:#05080f;color:#e8ecf4;font-family:'Outfit',sans-serif}
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
 @keyframes slideIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}
+@keyframes growIn{from{opacity:0;transform:scale(0.95)}to{opacity:1;transform:scale(1)}}
 ::-webkit-scrollbar{width:5px}
 ::-webkit-scrollbar-track{background:transparent}
 ::-webkit-scrollbar-thumb{background:#1a2744;border-radius:3px}
@@ -30,16 +32,15 @@ const {useState,useEffect,useRef,useCallback}=React;
 const API="https://grine-platform-production.up.railway.app";
 
 const T={display:"'Playfair Display',serif",body:"'Outfit',sans-serif",mono:"'IBM Plex Mono',monospace"};
-const C={bg:"#05080f",bgAlt:"#0a1020",surface:"#0d1424",raised:"#111b30",border:"#1a2744",cyan:"#00e5ff",cyanDim:"rgba(0,229,255,0.08)",gold:"#d4a853",goldDim:"rgba(212,168,83,0.10)",green:"#00e676",red:"#ff5252",text:"#e8ecf4",soft:"#8899b8",faint:"#4a5d80"};
+const C={bg:"#05080f",bgAlt:"#0a1020",surface:"#0d1424",raised:"#111b30",border:"#1a2744",cyan:"#00e5ff",cyanDim:"rgba(0,229,255,0.08)",cyanGlow:"rgba(0,229,255,0.3)",gold:"#d4a853",goldDim:"rgba(212,168,83,0.10)",green:"#00e676",greenDim:"rgba(0,230,118,0.08)",red:"#ff5252",redDim:"rgba(255,82,82,0.08)",text:"#e8ecf4",soft:"#8899b8",faint:"#4a5d80"};
+const CHART_COLORS=["#00e5ff","#d4a853","#00e676","#ff5252","#7c4dff","#ff6e40","#64ffda","#eeff41","#40c4ff","#ea80fc"];
 
 const inp={width:"100%",padding:"11px 14px",borderRadius:8,border:`1px solid ${C.border}`,background:C.bg,color:C.text,fontFamily:T.body,fontSize:13,outline:"none",transition:"all .2s"};
 const btnB={padding:"10px 22px",borderRadius:8,border:"none",fontFamily:T.body,fontSize:13,fontWeight:600,cursor:"pointer",transition:"all .15s"};
 const btnC={...btnB,background:`linear-gradient(135deg,${C.cyan},#00b8d4)`,color:C.bg};
 const btnG={...btnB,background:"transparent",border:`1px solid ${C.border}`,color:C.soft};
 const lbl={display:"block",fontSize:11,fontWeight:600,color:C.soft,textTransform:"uppercase",letterSpacing:".06em",marginBottom:6};
-const rBox={marginTop:24,background:C.surface,borderRadius:12,border:`1px solid ${C.border}`,padding:24};
-const pre={fontFamily:T.mono,fontSize:12,color:C.text,lineHeight:1.7,whiteSpace:"pre-wrap",overflowX:"auto",wordBreak:"break-word"};
-const eBox={marginTop:16,padding:"10px 14px",borderRadius:8,background:"rgba(255,82,82,0.06)",border:`1px solid ${C.red}22`,color:C.red,fontSize:12};
+const eBox={marginTop:16,padding:"10px 14px",borderRadius:8,background:C.redDim,border:`1px solid ${C.red}22`,color:C.red,fontSize:12};
 
 const apiFetch=async(path,token,opts={})=>{
   const h={"Content-Type":"application/json",...(token?{Authorization:`Bearer ${token}`}:{}),...(opts.headers||{})};
@@ -49,9 +50,210 @@ const apiFetch=async(path,token,opts={})=>{
   return d;
 };
 
+/* ═══ PRIMITIVES ═══ */
 const Spin=({size=14})=>React.createElement("span",{style:{display:"inline-block",width:size,height:size,border:`2px solid ${C.border}`,borderTopColor:C.cyan,borderRadius:"50%",animation:"spin .6s linear infinite",marginRight:6,verticalAlign:"middle"}});
 const Dot=({ok})=>React.createElement("span",{style:{display:"inline-block",width:7,height:7,borderRadius:"50%",background:ok?C.green:C.red,boxShadow:`0 0 6px ${ok?C.green:C.red}`,marginRight:8}});
 const Badge=({children,color=C.cyan})=>React.createElement("span",{style:{display:"inline-block",padding:"3px 10px",borderRadius:20,fontSize:10,fontWeight:600,letterSpacing:"0.06em",background:`${color}18`,color,fontFamily:T.mono,textTransform:"uppercase"}},children);
+
+/* ═══ CHART COMPONENTS ═══ */
+function DonutChart({data,size=200,thickness=32}){
+  const total=data.reduce((s,d)=>s+d.value,0);
+  if(total===0)return null;
+  const cx=size/2,cy=size/2,r=(size-thickness)/2;
+  let cumAngle=-90;
+  const paths=data.map((d,i)=>{
+    const pct=d.value/total;
+    const angle=pct*360;
+    const start=cumAngle;
+    cumAngle+=angle;
+    const end=cumAngle;
+    const startRad=(start*Math.PI)/180;
+    const endRad=(end*Math.PI)/180;
+    const x1=cx+r*Math.cos(startRad),y1=cy+r*Math.sin(startRad);
+    const x2=cx+r*Math.cos(endRad),y2=cy+r*Math.sin(endRad);
+    const large=angle>180?1:0;
+    const path=`M ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2}`;
+    return React.createElement("path",{key:i,d:path,fill:"none",stroke:CHART_COLORS[i%CHART_COLORS.length],strokeWidth:thickness,strokeLinecap:"round",style:{transition:"all 0.6s ease",opacity:0.9}});
+  });
+  return React.createElement("svg",{width:size,height:size,viewBox:`0 0 ${size} ${size}`},
+    React.createElement("circle",{cx,cy,r,fill:"none",stroke:C.border,strokeWidth:thickness,opacity:0.3}),
+    ...paths,
+    React.createElement("text",{x:cx,y:cy-8,textAnchor:"middle",fill:C.text,fontFamily:T.mono,fontSize:18,fontWeight:600},"$"+(total/1e6).toFixed(1)+"M"),
+    React.createElement("text",{x:cx,y:cy+12,textAnchor:"middle",fill:C.soft,fontFamily:T.body,fontSize:11},"Total Value")
+  );
+}
+
+function HBarChart({data,maxWidth=300}){
+  const maxVal=Math.max(...data.map(d=>Math.abs(d.value)),0.01);
+  return React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:10}},
+    data.map((d,i)=>{
+      const pct=Math.abs(d.value)/maxVal*100;
+      const isNeg=d.value<0;
+      const color=d.color||CHART_COLORS[i%CHART_COLORS.length];
+      return React.createElement("div",{key:i,style:{animation:`fadeUp 0.3s ease ${i*0.05}s both`}},
+        React.createElement("div",{style:{display:"flex",justifyContent:"space-between",marginBottom:4}},
+          React.createElement("span",{style:{fontSize:12,color:C.text,fontWeight:500}},d.label),
+          React.createElement("span",{style:{fontSize:12,fontFamily:T.mono,color:isNeg?C.red:color,fontWeight:600}},
+            typeof d.display==="string"?d.display:(d.value>=0?"+":"")+d.value.toFixed(2)+"%"
+          )
+        ),
+        React.createElement("div",{style:{height:6,background:C.bg,borderRadius:3,overflow:"hidden"}},
+          React.createElement("div",{style:{height:"100%",width:`${pct}%`,background:isNeg?`linear-gradient(90deg,${C.red},${C.red}88)`:`linear-gradient(90deg,${color},${color}88)`,borderRadius:3,transition:"width 0.8s ease"}})
+        )
+      );
+    })
+  );
+}
+
+function MetricCard({label,value,sub,color=C.cyan,large}){
+  return React.createElement("div",{style:{background:C.surface,borderRadius:12,border:`1px solid ${C.border}`,padding:large?"24px 20px":"18px 16px",animation:"growIn 0.4s ease",position:"relative",overflow:"hidden"}},
+    React.createElement("div",{style:{position:"absolute",top:0,left:0,width:3,height:"100%",background:color,borderRadius:"3px 0 0 3px"}}),
+    React.createElement("div",{style:{fontSize:11,color:C.soft,textTransform:"uppercase",letterSpacing:"0.06em",fontWeight:600,marginBottom:6}},label),
+    React.createElement("div",{style:{fontSize:large?28:22,fontFamily:T.mono,fontWeight:700,color,letterSpacing:"-0.02em"}},value),
+    sub&&React.createElement("div",{style:{fontSize:11,color:C.faint,marginTop:4}},sub)
+  );
+}
+
+function DataTable({headers,rows}){
+  return React.createElement("div",{style:{overflowX:"auto",borderRadius:12,border:`1px solid ${C.border}`}},
+    React.createElement("table",{style:{width:"100%",borderCollapse:"collapse",fontSize:13}},
+      React.createElement("thead",null,
+        React.createElement("tr",null,
+          headers.map((h,i)=>React.createElement("th",{key:i,style:{padding:"12px 16px",textAlign:i===0?"left":"right",borderBottom:`1px solid ${C.border}`,background:C.bgAlt,color:C.soft,fontSize:11,fontWeight:600,textTransform:"uppercase",letterSpacing:"0.06em",fontFamily:T.mono}},h))
+        )
+      ),
+      React.createElement("tbody",null,
+        rows.map((row,i)=>React.createElement("tr",{key:i,style:{borderBottom:`1px solid ${C.border}11`}},
+          row.map((cell,j)=>React.createElement("td",{key:j,style:{padding:"11px 16px",textAlign:j===0?"left":"right",color:j===0?C.text:C.soft,fontFamily:j===0?T.body:T.mono,fontSize:13,background:i%2===0?"transparent":C.surface+"44"}},cell))
+        ))
+      )
+    )
+  );
+}
+
+function SectionTitle({children,sub}){
+  return React.createElement("div",{style:{marginBottom:20}},
+    React.createElement("h3",{style:{fontFamily:T.display,fontSize:18,fontWeight:600,color:C.text}},children),
+    sub&&React.createElement("p",{style:{color:C.faint,fontSize:12,marginTop:2}},sub)
+  );
+}
+
+/* ═══ SMART RESULT RENDERER ═══ */
+function SmartResult({data,context}){
+  if(!data)return null;
+
+  const sections=[];
+  const keys=Object.keys(data);
+
+  // Extract metrics (numbers at top level)
+  const metrics=[];
+  const metricKeys=["expected_return","annual_return","annualized_return","total_return","sharpe_ratio","sharpe","volatility","annual_volatility","annualized_volatility","max_drawdown","sortino_ratio","sortino","calmar_ratio","beta","alpha","tracking_error","information_ratio","var_95","cvar_95","portfolio_return","portfolio_volatility","portfolio_value","total_value"];
+  const metricLabels={"expected_return":"Expected Return","annual_return":"Annual Return","annualized_return":"Ann. Return","total_return":"Total Return","sharpe_ratio":"Sharpe Ratio","sharpe":"Sharpe Ratio","volatility":"Volatility","annual_volatility":"Ann. Volatility","annualized_volatility":"Ann. Volatility","max_drawdown":"Max Drawdown","sortino_ratio":"Sortino Ratio","sortino":"Sortino","calmar_ratio":"Calmar Ratio","beta":"Beta","alpha":"Alpha","tracking_error":"Tracking Error","information_ratio":"Info Ratio","var_95":"VaR 95%","cvar_95":"CVaR 95%","portfolio_return":"Portfolio Return","portfolio_volatility":"Portfolio Vol","portfolio_value":"Portfolio Value","total_value":"Total Value"};
+  const metricColors={"expected_return":C.green,"annual_return":C.green,"annualized_return":C.green,"total_return":C.green,"sharpe_ratio":C.cyan,"sharpe":C.cyan,"volatility":C.gold,"annual_volatility":C.gold,"annualized_volatility":C.gold,"max_drawdown":C.red,"sortino_ratio":C.cyan,"var_95":C.red,"cvar_95":C.red};
+
+  const flatData={...data};
+  // Also look inside nested objects like "metrics" or "summary"
+  ["metrics","summary","statistics","performance","risk","risk_metrics","portfolio_metrics"].forEach(k=>{
+    if(flatData[k]&&typeof flatData[k]==="object"&&!Array.isArray(flatData[k])){
+      Object.entries(flatData[k]).forEach(([mk,mv])=>{if(!flatData[mk])flatData[mk]=mv});
+    }
+  });
+
+  metricKeys.forEach(k=>{
+    if(flatData[k]!==undefined&&typeof flatData[k]==="number"){
+      const isPercent=k.includes("return")||k.includes("volatility")||k.includes("drawdown")||k.includes("var")||k.includes("alpha")||k.includes("tracking");
+      const isPure=k.includes("sharpe")||k.includes("sortino")||k.includes("calmar")||k.includes("beta")||k.includes("ratio");
+      const isDollar=k.includes("value");
+      let display;
+      if(isDollar)display="$"+(flatData[k]/1e6>=1?(flatData[k]/1e6).toFixed(2)+"M":flatData[k].toLocaleString());
+      else if(isPercent)display=(flatData[k]*100<100&&flatData[k]*100>-100?(flatData[k]*100).toFixed(2):flatData[k].toFixed(2))+"%";
+      else display=flatData[k].toFixed(3);
+      metrics.push({label:metricLabels[k]||k.replace(/_/g," "),value:display,color:metricColors[k]||C.cyan});
+    }
+  });
+
+  if(metrics.length>0){
+    sections.push(React.createElement("div",{key:"metrics",style:{marginBottom:28}},
+      React.createElement(SectionTitle,null,"Key Metrics"),
+      React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(180px,1fr))",gap:12}},
+        metrics.map((m,i)=>React.createElement(MetricCard,{key:i,...m}))
+      )
+    ));
+  }
+
+  // Extract weights/allocations
+  const weightsKey=keys.find(k=>k==="weights"||k==="allocations"||k==="optimal_weights"||k==="target_weights");
+  if(weightsKey&&typeof data[weightsKey]==="object"&&!Array.isArray(data[weightsKey])){
+    const w=data[weightsKey];
+    const entries=Object.entries(w).sort((a,b)=>b[1]-a[1]);
+    const chartData=entries.map(([k,v])=>({label:k,value:v*100}));
+    const donutData=entries.map(([k,v])=>({label:k,value:Math.abs(v)}));
+
+    sections.push(React.createElement("div",{key:"weights",style:{marginBottom:28}},
+      React.createElement(SectionTitle,null,"Optimal Allocation"),
+      React.createElement("div",{style:{display:"flex",gap:32,alignItems:"flex-start",flexWrap:"wrap"}},
+        React.createElement("div",{style:{flex:"0 0 auto"}},
+          React.createElement(DonutChart,{data:donutData,size:180,thickness:28})
+        ),
+        React.createElement("div",{style:{flex:1,minWidth:250}},
+          React.createElement(HBarChart,{data:chartData.map((d,i)=>({...d,display:d.value.toFixed(1)+"%",color:CHART_COLORS[i%CHART_COLORS.length]}))})
+        )
+      )
+    ));
+  }
+
+  // Extract holdings
+  const holdingsKey=keys.find(k=>k==="holdings"||k==="positions");
+  if(holdingsKey&&Array.isArray(data[holdingsKey])&&data[holdingsKey].length>0){
+    const h=data[holdingsKey];
+    const headers=["Ticker","Name","Asset Class","Value","Weight"];
+    const total=h.reduce((s,x)=>s+(x.value||0),0);
+    const rows=h.map(x=>[
+      x.ticker||x.symbol||"-",
+      x.name||"-",
+      x.asset_class||"-",
+      "$"+(x.value||0).toLocaleString(),
+      total>0?((x.value/total)*100).toFixed(1)+"%":"—"
+    ]);
+    sections.push(React.createElement("div",{key:"holdings",style:{marginBottom:28}},
+      React.createElement(SectionTitle,null,"Holdings"),
+      React.createElement(DataTable,{headers,rows})
+    ));
+  }
+
+  // Extract scenarios/impacts
+  const impactKey=keys.find(k=>k==="impacts"||k==="asset_impacts"||k==="results"||k==="scenario_results");
+  if(impactKey&&typeof data[impactKey]==="object"){
+    const imp=data[impactKey];
+    let barData;
+    if(Array.isArray(imp)){
+      barData=imp.map((x,i)=>({label:x.name||x.ticker||x.asset||`Item ${i}`,value:typeof x.impact==="number"?x.impact*100:typeof x.return==="number"?x.return*100:0}));
+    }else{
+      barData=Object.entries(imp).map(([k,v])=>({label:k,value:(typeof v==="number"?v:v?.impact||v?.return||0)*100}));
+    }
+    if(barData.length>0){
+      sections.push(React.createElement("div",{key:"impacts",style:{marginBottom:28}},
+        React.createElement(SectionTitle,null,"Impact Analysis"),
+        React.createElement("div",{style:{maxWidth:500}},React.createElement(HBarChart,{data:barData}))
+      ));
+    }
+  }
+
+  // Raw JSON fallback (collapsible)
+  sections.push(React.createElement(RawToggle,{key:"raw",data}));
+
+  return React.createElement("div",{style:{animation:"fadeUp 0.4s ease"}},sections);
+}
+
+function RawToggle({data}){
+  const[open,setOpen]=useState(false);
+  return React.createElement("div",{style:{marginTop:12}},
+    React.createElement("button",{onClick:()=>setOpen(!open),style:{...btnG,fontSize:11,padding:"6px 14px",color:C.faint,borderColor:C.border+"88"}},open?"Hide Raw JSON ▲":"Show Raw JSON ▼"),
+    open&&React.createElement("div",{style:{marginTop:12,background:C.surface,borderRadius:12,border:`1px solid ${C.border}`,padding:20}},
+      React.createElement("pre",{style:{fontFamily:T.mono,fontSize:11,color:C.soft,lineHeight:1.6,whiteSpace:"pre-wrap",overflowX:"auto",wordBreak:"break-word"}},JSON.stringify(data,null,2))
+    )
+  );
+}
 
 /* ═══ AUTH ═══ */
 function AuthScreen({onAuth}){
@@ -69,9 +271,7 @@ function AuthScreen({onAuth}){
         await apiFetch("/api/v1/auth/register",null,{method:"POST",body:JSON.stringify({tenant_name:tenant||"Default",tenant_slug:(tenant||"default").toLowerCase().replace(/\s+/g,"-"),admin_email:email,admin_password:pw})});
         setMode("login");alert("Account created — now sign in.");
       }else{
-        const body=JSON.stringify({email,password:pw,tenant_slug:(tenant||"default").toLowerCase().replace(/\s+/g,"-")});
-        const r=await fetch(`${API}/api/v1/auth/login`,{method:"POST",headers:{"Content-Type":"application/json"},body});
-        const d=await r.json();if(!r.ok)throw new Error(d.detail||"Login failed");
+        const d=await apiFetch("/api/v1/auth/login",null,{method:"POST",body:JSON.stringify({email,password:pw,tenant_slug:(tenant||"default").toLowerCase().replace(/\s+/g,"-")})});
         onAuth(d.access_token,email);
       }
     }catch(e){setErr(e.message)}finally{setLoading(false)}
@@ -107,14 +307,13 @@ function AuthScreen({onAuth}){
 /* ═══ TABS ═══ */
 const TABS=[{id:"demo",label:"Demo",icon:"▶"},{id:"agent",label:"Agent",icon:"◈"},{id:"optimize",label:"Optimize",icon:"⬡"},{id:"backtest",label:"Backtest",icon:"◫"},{id:"scenarios",label:"Scenarios",icon:"◇"},{id:"portfolios",label:"Portfolios",icon:"▦"},{id:"analytics",label:"Analytics",icon:"◉"}];
 
-function AgentTab({token}){
+/* ── Agent ── */
+function AgentTab({token,demoP}){
   const[input,setInput]=useState("");
   const[msgs,setMsgs]=useState([]);
   const[loading,setLoading]=useState(false);
-  const[demoP,setDemoP]=useState(null);
   const endRef=useRef(null);
   useEffect(()=>{endRef.current?.scrollIntoView({behavior:"smooth"})},[msgs]);
-  useEffect(()=>{apiFetch("/api/v1/demo/portfolio",token).then(setDemoP).catch(()=>{})},[token]);
 
   const send=async()=>{
     if(!input.trim()||loading)return;
@@ -143,7 +342,7 @@ function AgentTab({token}){
       msgs.map((m,i)=>React.createElement("div",{key:i,style:{display:"flex",justifyContent:m.role==="user"?"flex-end":"flex-start",animation:"slideIn .3s ease"}},
         React.createElement("div",{style:{maxWidth:"72%",padding:"14px 18px",borderRadius:14,fontSize:13,lineHeight:1.7,whiteSpace:"pre-wrap",fontFamily:m.role==="ai"?T.mono:T.body,
           ...(m.role==="user"?{background:C.cyanDim,border:`1px solid ${C.cyan}22`,color:C.text}:
-            m.role==="err"?{background:"rgba(255,82,82,0.06)",border:`1px solid ${C.red}22`,color:C.red}:
+            m.role==="err"?{background:C.redDim,border:`1px solid ${C.red}22`,color:C.red}:
             {background:C.raised,border:`1px solid ${C.border}`,color:C.text})}},
           m.role==="ai"&&React.createElement("div",{style:{fontSize:9,color:C.gold,fontWeight:700,textTransform:"uppercase",letterSpacing:"0.1em",marginBottom:8,fontFamily:T.mono}},"Grine Agent"),
           m.content
@@ -159,127 +358,251 @@ function AgentTab({token}){
   );
 }
 
-function DemoTab({token}){
-  const[data,setData]=useState(null);const[loading,setLoading]=useState(true);
-  useEffect(()=>{apiFetch("/api/v1/demo/portfolio",token).then(setData).catch(e=>setData({error:e.message})).finally(()=>setLoading(false))},[token]);
+/* ── Demo ── */
+function DemoTab({token,demoP}){
+  if(!demoP)return React.createElement("div",{style:{padding:32,color:C.soft,fontSize:12}},React.createElement(Spin,null),"Loading demo portfolio...");
 
-  if(loading)return React.createElement("div",{style:{padding:32,color:C.soft,fontSize:12}},React.createElement(Spin,null),"Loading demo portfolio...");
-
-  const p=data;
-  const holdings=p&&p.holdings?p.holdings:[];
+  const holdings=demoP.holdings||[];
   const total=holdings.reduce((s,h)=>s+(h.value||0),0);
 
-  return React.createElement("div",{style:{padding:32,maxWidth:960,animation:"fadeUp .4s ease"}},
-    React.createElement("h2",{style:{fontFamily:T.display,fontSize:24,fontWeight:600,marginBottom:4}},"Demo Portfolio"),
-    React.createElement("p",{style:{color:C.soft,fontSize:13,marginBottom:28}},p?.client_name||"Sample"," · $",total.toLocaleString()),
-    holdings.length>0&&React.createElement("div",{style:{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:12}},
-      holdings.map((h,i)=>{
-        const pct=total>0?((h.value/total)*100).toFixed(1):0;
-        return React.createElement("div",{key:i,style:{background:C.surface,borderRadius:12,border:`1px solid ${C.border}`,padding:18}},
-          React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}},
-            React.createElement("span",{style:{fontFamily:T.mono,fontWeight:600,fontSize:14,color:C.cyan}},h.ticker),
-            React.createElement(Badge,{color:C.gold},h.asset_class)
-          ),
-          React.createElement("div",{style:{fontSize:12,color:C.soft,marginBottom:8}},h.name),
-          React.createElement("div",{style:{display:"flex",justifyContent:"space-between",fontSize:12}},
-            React.createElement("span",{style:{color:C.text}},"$",h.value?.toLocaleString()),
-            React.createElement("span",{style:{color:C.gold,fontFamily:T.mono}},pct,"%")
-          ),
-          React.createElement("div",{style:{marginTop:8,height:4,background:C.bg,borderRadius:2,overflow:"hidden"}},
-            React.createElement("div",{style:{height:"100%",width:`${pct}%`,background:`linear-gradient(90deg,${C.cyan},${C.gold})`,borderRadius:2}})
-          )
-        );
-      })
+  // Group by asset class
+  const byClass={};
+  holdings.forEach(h=>{
+    const cls=h.asset_class||"Other";
+    byClass[cls]=(byClass[cls]||0)+(h.value||0);
+  });
+  const classData=Object.entries(byClass).sort((a,b)=>b[1]-a[1]).map(([k,v])=>({label:k.replace(/_/g," "),value:v}));
+
+  return React.createElement("div",{style:{padding:32,maxWidth:1100,animation:"fadeUp .4s ease",overflowY:"auto"}},
+    React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:32}},
+      React.createElement("div",null,
+        React.createElement("h2",{style:{fontFamily:T.display,fontSize:28,fontWeight:700,marginBottom:4}},demoP.name||"Demo Portfolio"),
+        React.createElement("p",{style:{color:C.soft,fontSize:14}},demoP.client_name||"")
+      ),
+      React.createElement(MetricCard,{label:"Total Value",value:"$"+(total/1e6).toFixed(2)+"M",color:C.cyan,large:true})
     ),
-    React.createElement("div",{style:rBox},
-      React.createElement("div",{style:{fontSize:11,color:C.gold,fontWeight:700,textTransform:"uppercase",letterSpacing:".1em",marginBottom:12,fontFamily:T.mono}},"Raw JSON"),
-      React.createElement("pre",{style:pre},JSON.stringify(data,null,2))
-    )
+
+    // Asset class donut + breakdown
+    React.createElement("div",{style:{display:"flex",gap:32,marginBottom:36,flexWrap:"wrap",alignItems:"flex-start"}},
+      React.createElement("div",{style:{background:C.surface,borderRadius:16,border:`1px solid ${C.border}`,padding:28,flex:"0 0 auto",display:"flex",flexDirection:"column",alignItems:"center"}},
+        React.createElement("div",{style:{fontSize:11,color:C.soft,textTransform:"uppercase",letterSpacing:"0.06em",fontWeight:600,marginBottom:16}},"Asset Class Breakdown"),
+        React.createElement(DonutChart,{data:classData,size:200,thickness:30}),
+        React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:8,marginTop:16,justifyContent:"center"}},
+          classData.map((d,i)=>React.createElement("div",{key:i,style:{display:"flex",alignItems:"center",gap:4,fontSize:11,color:C.soft}},
+            React.createElement("span",{style:{width:8,height:8,borderRadius:2,background:CHART_COLORS[i%CHART_COLORS.length]}}),
+            d.label
+          ))
+        )
+      ),
+      React.createElement("div",{style:{flex:1,minWidth:300}},
+        React.createElement("div",{style:{fontSize:11,color:C.soft,textTransform:"uppercase",letterSpacing:"0.06em",fontWeight:600,marginBottom:12}},"Allocation by Weight"),
+        React.createElement(HBarChart,{data:holdings.map((h,i)=>({label:h.ticker,value:total>0?(h.value/total)*100:0,display:((h.value/total)*100).toFixed(1)+"%",color:CHART_COLORS[i%CHART_COLORS.length]}))})
+      )
+    ),
+
+    // Holdings table
+    React.createElement(DataTable,{
+      headers:["Ticker","Name","Asset Class","Qty","Value","Weight"],
+      rows:holdings.map(h=>[
+        h.ticker,h.name,
+        (h.asset_class||"").replace(/_/g," "),
+        (h.quantity||0).toLocaleString(),
+        "$"+(h.value||0).toLocaleString(),
+        total>0?((h.value/total)*100).toFixed(1)+"%":"—"
+      ])
+    })
   );
 }
 
-function FormTab({token,title,desc,endpoint,fields,method="POST"}){
-  const defaults={};fields.forEach(f=>{defaults[f.key]=f.default||""});
-  const[form,setForm]=useState(defaults);
-  const[result,setResult]=useState(null);const[loading,setLoading]=useState(false);const[err,setErr]=useState("");
+/* ── Optimize ── */
+function OptimizeTab({token,demoP}){
+  const[objective,setObjective]=useState("max_sharpe");
+  const[result,setResult]=useState(null);
+  const[loading,setLoading]=useState(false);
+  const[err,setErr]=useState("");
 
   const run=async()=>{
     setLoading(true);setErr("");setResult(null);
     try{
-      let body=form;
-      if(form._transform)body=form._transform(form);
-      const d=await apiFetch(endpoint,token,{method,body:JSON.stringify(body)});
+      const portfolio=demoP||{id:"default",name:"Default",client_name:"Client",holdings:[],as_of_date:new Date().toISOString().split("T")[0]};
+      const d=await apiFetch("/api/v1/optimize",token,{method:"POST",body:JSON.stringify(portfolio),headers:{"X-Objective":objective}});
       setResult(d);
     }catch(e){setErr(e.message)}finally{setLoading(false)}
   };
 
-  return React.createElement("div",{style:{padding:32,maxWidth:900,animation:"fadeUp .4s ease"}},
-    React.createElement("h2",{style:{fontFamily:T.display,fontSize:24,fontWeight:600,marginBottom:4}},title),
-    React.createElement("p",{style:{color:C.soft,fontSize:13,marginBottom:28}},desc),
-    React.createElement("div",{style:{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:24}},
-      fields.map(f=>React.createElement("div",{key:f.key,style:f.full?{gridColumn:"1/-1"}:{}},
-        React.createElement("label",{style:lbl},f.label),
-        f.type==="select"?
-          React.createElement("div",{style:{display:"flex",gap:8}},
-            f.options.map(o=>React.createElement("button",{key:o,onClick:()=>setForm({...form,[f.key]:o}),style:{...btnG,flex:1,borderColor:form[f.key]===o?C.cyan:C.border,color:form[f.key]===o?C.cyan:C.soft,background:form[f.key]===o?C.cyanDim:"transparent",textTransform:"capitalize"}},o))
-          ):
-          React.createElement("input",{style:{...inp,colorScheme:"dark"},type:f.type||"text",value:form[f.key],onChange:e=>setForm({...form,[f.key]:e.target.value})})
-      ))
+  return React.createElement("div",{style:{padding:32,maxWidth:1000,animation:"fadeUp .4s ease",overflowY:"auto"}},
+    React.createElement("h2",{style:{fontFamily:T.display,fontSize:28,fontWeight:700,marginBottom:4}},"Portfolio Optimizer"),
+    React.createElement("p",{style:{color:C.soft,fontSize:13,marginBottom:28}},"Ledoit-Wolf covariance shrinkage · cvxpy convex optimization engine"),
+
+    React.createElement("div",{style:{marginBottom:24}},
+      React.createElement("label",{style:{...lbl,marginBottom:10}},"Optimization Objective"),
+      React.createElement("div",{style:{display:"flex",gap:8}},
+        [["max_sharpe","Max Sharpe"],["min_variance","Min Variance"],["risk_parity","Risk Parity"]].map(([val,label])=>
+          React.createElement("button",{key:val,onClick:()=>setObjective(val),style:{...btnG,flex:1,borderColor:objective===val?C.cyan:C.border,color:objective===val?C.cyan:C.soft,background:objective===val?C.cyanDim:"transparent",fontSize:12}},label)
+        )
+      )
     ),
-    React.createElement("button",{onClick:run,disabled:loading,style:{...btnC,opacity:loading?0.5:1}},loading&&React.createElement(Spin,null),"Run"),
+
+    React.createElement("div",{style:{display:"flex",gap:12,marginBottom:32}},
+      React.createElement("button",{onClick:run,disabled:loading,style:{...btnC,opacity:loading?0.5:1,padding:"12px 32px"}},loading&&React.createElement(Spin,null),"Run Optimization"),
+      demoP&&React.createElement("div",{style:{display:"flex",alignItems:"center",color:C.faint,fontSize:12}},React.createElement(Dot,{ok:true}),"Using: ",demoP.name||"Demo Portfolio")
+    ),
+
     err&&React.createElement("div",{style:eBox},err),
-    result&&React.createElement("div",{style:rBox},React.createElement("pre",{style:pre},JSON.stringify(result,null,2)))
+    result&&React.createElement(SmartResult,{data:result,context:"optimize"})
   );
 }
 
-function ScenariosTab({token}){
-  const[scenarios,setScenarios]=useState(null);const[selected,setSelected]=useState("");const[result,setResult]=useState(null);const[loading,setLoading]=useState(false);const[err,setErr]=useState("");
-  const[demoP,setDemoP]=useState(null);
+/* ── Backtest ── */
+function BacktestTab({token,demoP}){
+  const[period,setPeriod]=useState("3y");
+  const[freq,setFreq]=useState("monthly");
+  const[result,setResult]=useState(null);
+  const[loading,setLoading]=useState(false);
+  const[err,setErr]=useState("");
 
-  useEffect(()=>{
-    apiFetch("/api/v1/scenarios",token).then(setScenarios).catch(()=>{});
-    apiFetch("/api/v1/demo/portfolio",token).then(setDemoP).catch(()=>{});
-  },[token]);
+  const run=async()=>{
+    setLoading(true);setErr("");setResult(null);
+    try{
+      const portfolio=demoP||{id:"default",name:"Default",client_name:"Client",holdings:[],as_of_date:new Date().toISOString().split("T")[0]};
+      const d=await apiFetch(`/api/v1/backtest?period=${period}&rebalance_freq=${freq}`,token,{method:"POST",body:JSON.stringify(portfolio)});
+      setResult(d);
+    }catch(e){setErr(e.message)}finally{setLoading(false)}
+  };
+
+  return React.createElement("div",{style:{padding:32,maxWidth:1000,animation:"fadeUp .4s ease",overflowY:"auto"}},
+    React.createElement("h2",{style:{fontFamily:T.display,fontSize:28,fontWeight:700,marginBottom:4}},"Backtest Engine"),
+    React.createElement("p",{style:{color:C.soft,fontSize:13,marginBottom:28}},"Historical performance simulation with drawdown and risk analysis"),
+
+    React.createElement("div",{style:{display:"flex",gap:24,marginBottom:24,flexWrap:"wrap"}},
+      React.createElement("div",null,
+        React.createElement("label",{style:{...lbl,marginBottom:8}},"Lookback Period"),
+        React.createElement("div",{style:{display:"flex",gap:6}},
+          ["1y","2y","3y","5y","10y"].map(p=>React.createElement("button",{key:p,onClick:()=>setPeriod(p),style:{...btnG,padding:"8px 14px",fontSize:12,borderColor:period===p?C.cyan:C.border,color:period===p?C.cyan:C.soft,background:period===p?C.cyanDim:"transparent"}},p))
+        )
+      ),
+      React.createElement("div",null,
+        React.createElement("label",{style:{...lbl,marginBottom:8}},"Rebalance Frequency"),
+        React.createElement("div",{style:{display:"flex",gap:6}},
+          ["monthly","quarterly","annually"].map(f=>React.createElement("button",{key:f,onClick:()=>setFreq(f),style:{...btnG,padding:"8px 14px",fontSize:12,borderColor:freq===f?C.gold:C.border,color:freq===f?C.gold:C.soft,background:freq===f?C.goldDim:"transparent",textTransform:"capitalize"}},f))
+        )
+      )
+    ),
+
+    React.createElement("div",{style:{display:"flex",gap:12,marginBottom:32}},
+      React.createElement("button",{onClick:run,disabled:loading,style:{...btnC,opacity:loading?0.5:1,padding:"12px 32px"}},loading&&React.createElement(Spin,null),"Run Backtest"),
+      demoP&&React.createElement("div",{style:{display:"flex",alignItems:"center",color:C.faint,fontSize:12}},React.createElement(Dot,{ok:true}),"Using: ",demoP.name||"Demo Portfolio")
+    ),
+
+    err&&React.createElement("div",{style:eBox},err),
+    result&&React.createElement(SmartResult,{data:result,context:"backtest"})
+  );
+}
+
+/* ── Scenarios ── */
+function ScenariosTab({token,demoP}){
+  const[scenarios,setScenarios]=useState(null);
+  const[selected,setSelected]=useState("");
+  const[result,setResult]=useState(null);
+  const[loading,setLoading]=useState(false);
+  const[err,setErr]=useState("");
+
+  useEffect(()=>{apiFetch("/api/v1/scenarios",token).then(setScenarios).catch(()=>{})},[token]);
 
   const run=async(name)=>{
     setLoading(true);setErr("");setResult(null);setSelected(name);
-    try{const d=await apiFetch(`/api/v1/scenario/${name}`,token,{method:"POST",body:JSON.stringify(demoP||{})});setResult(d)}catch(e){setErr(e.message)}finally{setLoading(false)}
+    try{
+      const portfolio=demoP||{id:"default",name:"Default",client_name:"Client",holdings:[],as_of_date:new Date().toISOString().split("T")[0]};
+      const d=await apiFetch(`/api/v1/scenario/${name}`,token,{method:"POST",body:JSON.stringify(portfolio)});
+      setResult(d);
+    }catch(e){setErr(e.message)}finally{setLoading(false)}
   };
 
-  return React.createElement("div",{style:{padding:32,maxWidth:900,animation:"fadeUp .4s ease"}},
-    React.createElement("h2",{style:{fontFamily:T.display,fontSize:24,fontWeight:600,marginBottom:4}},"Scenario Engine"),
-    React.createElement("p",{style:{color:C.soft,fontSize:13,marginBottom:28}},"Stress test against macro scenarios"),
+  return React.createElement("div",{style:{padding:32,maxWidth:1000,animation:"fadeUp .4s ease",overflowY:"auto"}},
+    React.createElement("h2",{style:{fontFamily:T.display,fontSize:28,fontWeight:700,marginBottom:4}},"Scenario Engine"),
+    React.createElement("p",{style:{color:C.soft,fontSize:13,marginBottom:28}},"Stress test portfolios against historical and hypothetical macro scenarios"),
+
     scenarios&&Array.isArray(scenarios)?
-      React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:10,marginBottom:24}},
-        scenarios.map((s,i)=>{const n=typeof s==="string"?s:s.name||s.id||`Scenario ${i}`;return React.createElement("button",{key:i,onClick:()=>run(n),style:{...btnG,borderColor:selected===n?C.gold:C.border,color:selected===n?C.gold:C.soft,background:selected===n?C.goldDim:"transparent"}},n)})
-      ):React.createElement("div",{style:{color:C.faint,fontSize:13}},"Loading..."),
-    loading&&React.createElement("div",{style:{color:C.soft,fontSize:12,display:"flex",alignItems:"center"}},React.createElement(Spin,null),"Running..."),
+      React.createElement("div",{style:{display:"flex",flexWrap:"wrap",gap:10,marginBottom:32}},
+        scenarios.map((s,i)=>{
+          const n=typeof s==="string"?s:s.name||s.id||`Scenario ${i}`;
+          const desc=typeof s==="object"?s.description||"":"";
+          return React.createElement("button",{key:i,onClick:()=>run(n),style:{...btnG,borderColor:selected===n?C.gold:C.border,color:selected===n?C.gold:C.soft,background:selected===n?C.goldDim:"transparent",display:"flex",flexDirection:"column",alignItems:"flex-start",gap:2,padding:"12px 16px"}},
+            React.createElement("span",{style:{fontWeight:600,fontSize:13}},n),
+            desc&&React.createElement("span",{style:{fontSize:10,color:C.faint,fontWeight:400}},desc)
+          );
+        })
+      ):React.createElement("div",{style:{color:C.faint,fontSize:13,marginBottom:24}},React.createElement(Spin,null),"Loading scenarios..."),
+
+    loading&&React.createElement("div",{style:{color:C.soft,fontSize:12,display:"flex",alignItems:"center",marginBottom:16}},React.createElement(Spin,null),"Running ",selected,"..."),
     err&&React.createElement("div",{style:eBox},err),
-    result&&React.createElement("div",{style:rBox},React.createElement("pre",{style:pre},JSON.stringify(result,null,2)))
+    result&&React.createElement("div",null,
+      React.createElement("div",{style:{marginBottom:16}},React.createElement(Badge,{color:C.gold},"Scenario: "+selected)),
+      React.createElement(SmartResult,{data:result,context:"scenario"})
+    )
   );
 }
 
+/* ── Analytics ── */
+function AnalyticsTab({token,demoP}){
+  const[result,setResult]=useState(null);
+  const[loading,setLoading]=useState(false);
+  const[err,setErr]=useState("");
+
+  const run=async()=>{
+    setLoading(true);setErr("");setResult(null);
+    try{
+      const portfolio=demoP||{id:"default",name:"Default",client_name:"Client",holdings:[],as_of_date:new Date().toISOString().split("T")[0]};
+      const d=await apiFetch("/api/v1/analytics/full",token,{method:"POST",body:JSON.stringify(portfolio)});
+      setResult(d);
+    }catch(e){setErr(e.message)}finally{setLoading(false)}
+  };
+
+  return React.createElement("div",{style:{padding:32,maxWidth:1000,animation:"fadeUp .4s ease",overflowY:"auto"}},
+    React.createElement("h2",{style:{fontFamily:T.display,fontSize:28,fontWeight:700,marginBottom:4}},"Full Analytics"),
+    React.createElement("p",{style:{color:C.soft,fontSize:13,marginBottom:28}},"Comprehensive portfolio analysis: risk decomposition, factor exposure, and performance attribution"),
+
+    React.createElement("div",{style:{display:"flex",gap:12,marginBottom:32}},
+      React.createElement("button",{onClick:run,disabled:loading,style:{...btnC,opacity:loading?0.5:1,padding:"12px 32px"}},loading&&React.createElement(Spin,null),"Run Full Analysis"),
+      demoP&&React.createElement("div",{style:{display:"flex",alignItems:"center",color:C.faint,fontSize:12}},React.createElement(Dot,{ok:true}),"Using: ",demoP.name||"Demo Portfolio")
+    ),
+
+    err&&React.createElement("div",{style:eBox},err),
+    result&&React.createElement(SmartResult,{data:result,context:"analytics"})
+  );
+}
+
+/* ── Portfolios ── */
 function PortfoliosTab({token}){
   const[data,setData]=useState(null);const[loading,setLoading]=useState(true);const[err,setErr]=useState("");
-  const load=()=>{setLoading(true);apiFetch("/api/v1/portfolios",token).then(d=>{setData(d);setLoading(false)}).catch(e=>{setErr(e.message);setLoading(false)})};
+  const load=()=>{setLoading(true);setErr("");apiFetch("/api/v1/portfolios",token).then(d=>{setData(d);setLoading(false)}).catch(e=>{setErr(e.message);setLoading(false)})};
   useEffect(()=>{load()},[token]);
 
-  return React.createElement("div",{style:{padding:32,maxWidth:900,animation:"fadeUp .4s ease"}},
-    React.createElement("div",{style:{display:"flex",justifyContent:"space-between",marginBottom:28}},
+  return React.createElement("div",{style:{padding:32,maxWidth:1000,animation:"fadeUp .4s ease"}},
+    React.createElement("div",{style:{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:28}},
       React.createElement("div",null,
-        React.createElement("h2",{style:{fontFamily:T.display,fontSize:24,fontWeight:600,marginBottom:4}},"Saved Portfolios"),
-        React.createElement("p",{style:{color:C.soft,fontSize:13}},"Persisted allocations")
+        React.createElement("h2",{style:{fontFamily:T.display,fontSize:28,fontWeight:700,marginBottom:4}},"Saved Portfolios"),
+        React.createElement("p",{style:{color:C.soft,fontSize:13}},"Persisted allocations from optimization runs")
       ),
       React.createElement("button",{onClick:load,style:btnG},"Refresh")
     ),
     loading?React.createElement("div",{style:{color:C.soft,fontSize:12}},React.createElement(Spin,null),"Loading..."):
     err?React.createElement("div",{style:eBox},err):
     data&&(Array.isArray(data)?data:[data]).length>0?
-      React.createElement("div",{style:{display:"flex",flexDirection:"column",gap:12}},
-        (Array.isArray(data)?data:[data]).map((p,i)=>React.createElement("div",{key:i,style:{background:C.surface,borderRadius:12,border:`1px solid ${C.border}`,padding:20}},
-          React.createElement("pre",{style:pre},JSON.stringify(p,null,2))
-        ))
-      ):React.createElement("div",{style:{color:C.faint,fontSize:13}},"No saved portfolios yet.")
+      React.createElement(DataTable,{
+        headers:["ID","Name","Client","Total Value"],
+        rows:(Array.isArray(data)?data:[data]).map(p=>[
+          (p.id||"—").toString().slice(0,8),
+          p.name||"—",
+          p.client_name||"—",
+          p.total_value?"$"+p.total_value.toLocaleString():"—"
+        ])
+      }):
+      React.createElement("div",{style:{background:C.surface,borderRadius:16,border:`1px solid ${C.border}`,padding:40,textAlign:"center"}},
+        React.createElement("div",{style:{fontSize:32,color:C.faint,marginBottom:12}},"▦"),
+        React.createElement("div",{style:{color:C.soft,fontSize:14}},"No saved portfolios yet"),
+        React.createElement("div",{style:{color:C.faint,fontSize:12,marginTop:4}},"Run an optimization and save the result")
+      )
   );
 }
 
@@ -287,46 +610,54 @@ function PortfoliosTab({token}){
 function Dashboard({token,userEmail,onLogout}){
   const[tab,setTab]=useState("demo");
   const[health,setHealth]=useState(null);
-  useEffect(()=>{fetch(`${API}/health`).then(r=>r.json()).then(setHealth).catch(()=>setHealth({status:"error"}))},[]);
+  const[demoP,setDemoP]=useState(null);
+
+  useEffect(()=>{
+    fetch(`${API}/health`).then(r=>r.json()).then(setHealth).catch(()=>setHealth({status:"error"}));
+    apiFetch("/api/v1/demo/portfolio",token).then(setDemoP).catch(()=>{});
+  },[token]);
 
   let content;
-  if(tab==="demo") content=React.createElement(DemoTab,{token});
-  else if(tab==="agent") content=React.createElement(AgentTab,{token});
-  else if(tab==="scenarios") content=React.createElement(ScenariosTab,{token});
+  if(tab==="demo") content=React.createElement(DemoTab,{token,demoP});
+  else if(tab==="agent") content=React.createElement(AgentTab,{token,demoP});
+  else if(tab==="optimize") content=React.createElement(OptimizeTab,{token,demoP});
+  else if(tab==="backtest") content=React.createElement(BacktestTab,{token,demoP});
+  else if(tab==="scenarios") content=React.createElement(ScenariosTab,{token,demoP});
   else if(tab==="portfolios") content=React.createElement(PortfoliosTab,{token});
-  else if(tab==="analytics") content=React.createElement(FormTab,{token,title:"Full Analytics",desc:"Comprehensive risk analysis",endpoint:"/api/v1/analytics/full",method:"POST",fields:[]});
-  else if(tab==="optimize") content=React.createElement(FormTab,{token,title:"Portfolio Optimizer",desc:"Ledoit-Wolf shrinkage · cvxpy convex optimization",endpoint:"/api/v1/optimize",method:"POST",fields:[
-    {key:"objective",label:"Objective",type:"select",options:["max_sharpe","min_variance","risk_parity"],default:"max_sharpe",full:true}
-  ]});
-  else if(tab==="backtest") content=React.createElement(FormTab,{token,title:"Backtest Engine",desc:"Historical simulation with drawdown analysis",endpoint:"/api/v1/backtest",method:"POST",fields:[
-    {key:"period",label:"Period",default:"3y"},{key:"rebalance_freq",label:"Rebalance",type:"select",options:["monthly","quarterly","annually"],default:"monthly"}
-  ]});
+  else if(tab==="analytics") content=React.createElement(AnalyticsTab,{token,demoP});
 
   return React.createElement("div",{style:{minHeight:"100vh",background:C.bg,fontFamily:T.body,color:C.text,display:"flex"}},
-    React.createElement("aside",{style:{width:220,borderRight:`1px solid ${C.border}`,display:"flex",flexDirection:"column",background:C.bgAlt,flexShrink:0}},
+    React.createElement("aside",{style:{width:230,borderRight:`1px solid ${C.border}`,display:"flex",flexDirection:"column",background:C.bgAlt,flexShrink:0}},
       React.createElement("div",{style:{padding:"24px 20px 20px",borderBottom:`1px solid ${C.border}`}},
-        React.createElement("div",{style:{fontFamily:T.display,fontSize:22,fontWeight:700,color:C.cyan,letterSpacing:"-0.02em"}},"GrineOS"),
-        React.createElement("div",{style:{fontSize:10,color:C.faint,letterSpacing:"0.1em",textTransform:"uppercase",marginTop:2}},"v2.0.0")
+        React.createElement("div",{style:{fontFamily:T.display,fontSize:24,fontWeight:700,color:C.cyan,letterSpacing:"-0.02em"}},"GrineOS"),
+        React.createElement("div",{style:{fontSize:10,color:C.faint,letterSpacing:"0.1em",textTransform:"uppercase",marginTop:2}},"Allocation Platform · v2.0")
       ),
       React.createElement("nav",{style:{flex:1,padding:"12px 10px",display:"flex",flexDirection:"column",gap:2}},
-        TABS.map(t=>React.createElement("button",{key:t.id,onClick:()=>setTab(t.id),style:{display:"flex",alignItems:"center",gap:10,padding:"10px 12px",borderRadius:8,border:"none",background:tab===t.id?C.cyanDim:"transparent",color:tab===t.id?C.cyan:C.soft,fontFamily:T.body,fontSize:13,fontWeight:tab===t.id?600:400,cursor:"pointer",transition:"all .15s",textAlign:"left"}},
-          React.createElement("span",{style:{fontFamily:T.mono,fontSize:14,width:20,textAlign:"center"}},t.icon),t.label
+        TABS.map(t=>React.createElement("button",{key:t.id,onClick:()=>setTab(t.id),style:{display:"flex",alignItems:"center",gap:10,padding:"11px 14px",borderRadius:8,border:"none",background:tab===t.id?C.cyanDim:"transparent",color:tab===t.id?C.cyan:C.soft,fontFamily:T.body,fontSize:13,fontWeight:tab===t.id?600:400,cursor:"pointer",transition:"all .15s",textAlign:"left"}},
+          React.createElement("span",{style:{fontFamily:T.mono,fontSize:14,width:20,textAlign:"center",opacity:tab===t.id?1:0.5}},t.icon),t.label
         ))
       ),
       React.createElement("div",{style:{padding:"16px 16px 20px",borderTop:`1px solid ${C.border}`,fontSize:12}},
-        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6,marginBottom:8}},
+        React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6,marginBottom:6}},
           React.createElement(Dot,{ok:health?.status==="healthy"||health?.status==="ok"}),
-          "API ",
-          React.createElement(Badge,{color:health?.status==="healthy"||health?.status==="ok"?C.green:C.red},health?.status||"...")
+          React.createElement("span",{style:{color:C.soft,fontSize:11}},"API"),
+          React.createElement("span",{style:{marginLeft:"auto"}},React.createElement(Badge,{color:health?.status==="healthy"||health?.status==="ok"?C.green:C.red},health?.status||"..."))
         ),
-        React.createElement("div",{style:{color:C.faint,fontSize:11,marginTop:12}},userEmail),
-        React.createElement("button",{onClick:onLogout,style:{...btnG,width:"100%",marginTop:10,fontSize:11,padding:"7px 0",color:C.red,borderColor:C.red+"44"}},"Sign Out")
+        health?.agent&&React.createElement("div",{style:{display:"flex",alignItems:"center",gap:6,marginBottom:6}},
+          React.createElement(Dot,{ok:true}),
+          React.createElement("span",{style:{color:C.soft,fontSize:11}},"Agent"),
+          React.createElement("span",{style:{marginLeft:"auto"}},React.createElement(Badge,{color:C.green},"active"))
+        ),
+        React.createElement("div",{style:{color:C.faint,fontSize:11,marginTop:12,lineHeight:1.5}},userEmail),
+        React.createElement("button",{onClick:onLogout,style:{...btnG,width:"100%",marginTop:10,fontSize:11,padding:"7px 0",color:C.red,borderColor:C.red+"44"}},"Sign Out"),
+        React.createElement("div",{style:{marginTop:16,paddingTop:12,borderTop:`1px solid ${C.border}`,fontSize:10,color:C.faint,lineHeight:1.5}},"Grine Technologies Ltd",React.createElement("br",null),"A KG&Co Company")
       )
     ),
     React.createElement("main",{style:{flex:1,overflow:"auto",display:"flex",flexDirection:"column"}},content)
   );
 }
 
+/* ═══ ROOT ═══ */
 function App(){
   const[token,setToken]=useState(null);
   const[email,setEmail]=useState("");
