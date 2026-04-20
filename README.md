@@ -12,14 +12,36 @@ GrineOS answers three critical questions for capital allocation:
 
 It combines:
 - Regime detection using ensemble HMM methods
-- Constraint-based allocation optimization  
+- Constraint-based allocation within defined regime bands  
 - Portfolio alignment scoring with transparent penalties
 
 into a unified decision framework.
+GrineOS is not a trading system or an optimizer  It is a decision framework for capital allocation.    
+## Why GrineOS Exists
+
+Capital allocation today is fragmented.
+
+- Market regimes are identified inconsistently  
+- Allocation decisions are often discretionary or opaque  
+- Portfolio alignment is rarely measured in a structured way  
+
+As a result, portfolios drift away from their intended strategy without a clear framework to detect or correct it.
+
+GrineOS solves this by providing a unified system that defines:
+- the current market regime
+- the appropriate allocation
+- and the degree of alignment of any portfolio to that allocation
 ## Architecture
-grine_regime_engine  →  Backend Services  →  React Dashboard
-(detection)         (allocation +          (decision
-alignment)              surface)
+## System Flow
+
+Regime → Allocation → Alignment → Decision
+
+GrineOS transforms market data into a structured allocation decision:
+
+1. Regime detection identifies the current market state  
+2. Allocation defines appropriate portfolio ranges  
+3. Alignment measures how a portfolio compares  
+4. The system surfaces clear actions
 ## Features
 
 - **Regime Detection**: 5 market states (EXPANSION/BALANCED/TRANSITION/ENDURANCE/PROTECTION)
