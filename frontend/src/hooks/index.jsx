@@ -1,147 +1,152 @@
 import { useState, useEffect } from 'react';
 
+// Simplified hooks with immediate data loading for demo purposes
 export function useRegime() {
-  const [regimeData, setRegimeData] = useState({
-    regime: 'EXPANSION',
-    confidence: 0.94,
-    duration: 8,
-    timestamp: Date.now() - 120000, // 2 minutes ago
+  const [regimeData] = useState({
+    data: {
+      final_state: 'EXPANSION',
+      confidence: 0.94,
+      momentum: 0.85,
+      metadata: {
+        cache_hit: true,
+        processing_time_ms: 120
+      },
+      detection_id: 'demo-regime-001',
+      tenant_id: 'demo-tenant',
+      created_at: new Date().toISOString()
+    },
     isLoading: false,
+    isError: false,
     error: null
   });
-
-  // Simulate data fetching
-  useEffect(() => {
-    const fetchRegimeData = () => {
-      // In a real app, this would be an API call
-      // For now, we'll simulate regime data
-      const regimes = ['EXPANSION', 'BALANCED', 'TRANSITION', 'ENDURANCE', 'PROTECTION'];
-      const currentRegime = regimes[Math.floor(Math.random() * regimes.length)];
-      
-      setRegimeData({
-        regime: 'EXPANSION', // Keep consistent for demo
-        confidence: 0.94,
-        duration: 8,
-        timestamp: Date.now() - 120000,
-        isLoading: false,
-        error: null
-      });
-    };
-
-    fetchRegimeData();
-    
-    // Refresh every 30 seconds
-    const interval = setInterval(fetchRegimeData, 30000);
-    return () => clearInterval(interval);
-  }, []);
 
   return regimeData;
 }
 
 export function useAllocation() {
-  const [allocationData, setAllocationData] = useState({
-    allocation: {
-      equities: 75,
-      bonds: 15,
-      commodities: 5,
-      cash: 5
+  const [allocationData] = useState({
+    data: {
+      final_weights: {
+        equity: 0.75,
+        bonds: 0.15,
+        cash: 0.10
+      },
+      constraints: {
+        regime_state: 'EXPANSION',
+        ranges: {
+          equity: { lower: 0.60, upper: 0.85 },
+          bonds: { lower: 0.10, upper: 0.30 },
+          cash: { lower: 0.05, upper: 0.15 }
+        },
+        turnover_cap: 0.20,
+        objective: 'max_sharpe'
+      },
+      turnover: {
+        realized: 0.12,
+        proposed: 0.15,
+        cap: 0.20,
+        capped: false
+      },
+      dividend_split: {
+        equity_total: 0.75,
+        growth: 0.45,
+        dividend: 0.30,
+        dividend_share: 0.40,
+        range_lower: 0.35,
+        range_upper: 0.55
+      },
+      created_at: new Date().toISOString(),
+      recommendation_id: 'demo-alloc-001'
     },
-    regime: 'EXPANSION',
-    timestamp: Date.now() - 120000,
     isLoading: false,
+    isError: false,
     error: null
   });
-
-  useEffect(() => {
-    const fetchAllocationData = () => {
-      // In a real app, this would be an API call
-      setAllocationData({
-        allocation: {
-          equities: 75,
-          bonds: 15,
-          commodities: 5,
-          cash: 5
-        },
-        regime: 'EXPANSION',
-        timestamp: Date.now() - 120000,
-        isLoading: false,
-        error: null
-      });
-    };
-
-    fetchAllocationData();
-    
-    // Refresh every 30 seconds
-    const interval = setInterval(fetchAllocationData, 30000);
-    return () => clearInterval(interval);
-  }, []);
 
   return allocationData;
 }
 
 export function useAllocationHistory() {
-  const [historyData, setHistoryData] = useState({
-    history: [
-      {
-        id: 1,
-        date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-        fromRegime: 'BALANCED',
-        toRegime: 'EXPANSION',
-        allocation: { equities: 75, bonds: 15, commodities: 5, cash: 5 }
+  const [historyData] = useState({
+    data: {
+      current: {
+        final_weights: { equity: 0.75, bonds: 0.15, cash: 0.10 },
+        created_at: new Date().toISOString()
       },
-      {
-        id: 2,
-        date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-        fromRegime: 'TRANSITION',
-        toRegime: 'BALANCED',
-        allocation: { equities: 60, bonds: 30, commodities: 5, cash: 5 }
+      history: [
+        {
+          recommendation_id: 'demo-hist-001',
+          weights: { equity: 0.70, bonds: 0.20, cash: 0.10 },
+          regime_state: 'BALANCED',
+          confidence: 0.89,
+          momentum: 0.45,
+          turnover: 0.08,
+          change_magnitude: 'minor',
+          created_at: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString()
+        }
+      ],
+      total_count: 1,
+      date_range: { start: '2024-01-01', end: '2024-12-31' },
+      stats: {
+        avg_turnover: 0.08,
+        regime_distribution: { EXPANSION: 0.6, BALANCED: 0.4 },
+        rebalance_frequency: 12
       }
-    ],
+    },
     isLoading: false,
+    isError: false,
     error: null
   });
-
-  useEffect(() => {
-    // In a real app, this would fetch allocation history from an API
-    // For now, we'll use mock data
-  }, []);
 
   return historyData;
 }
 
 export function useAlignment() {
-  const [alignmentData, setAlignmentData] = useState({
-    score: 87,
-    breakdown: {
-      weightDeviation: -2.3,
-      regimeConsistency: 94,
-      riskBudgetUsage: 78
+  const [alignmentData] = useState({
+    data: {
+      regime: {
+        state: 'EXPANSION',
+        confidence: 'HIGH',
+        confidence_value: 0.94
+      },
+      portfolio: { equity: 0.58, bonds: 0.32, cash: 0.10 },
+      recommended: {
+        target: { equity: 0.75, bonds: 0.15, cash: 0.10 },
+        ranges: {
+          equity: [0.60, 0.85],
+          bonds: [0.10, 0.30],
+          cash: [0.05, 0.15]
+        }
+      },
+      alignment: {
+        score: 87,
+        label: 'Moderately Aligned',
+        deviations: {
+          equity: -0.17,
+          bonds: 0.17,
+          cash: 0.00
+        },
+        range_status: {
+          equity: 'below',
+          bonds: 'above',
+          cash: 'inside'
+        },
+        penalty_breakdown: {
+          weight_deviation: 15,
+          range_violation: 5
+        }
+      },
+      suggested_adjustments: [
+        'Increase equity allocation by 17%',
+        'Reduce bond allocation by 17%',
+        'Cash allocation is optimal'
+      ],
+      tenant_id: 'demo-tenant'
     },
-    recommendations: [
-      'Reduce equity allocation by 2.1%',
-      'Increase bond allocation by 1.8%',
-      'Rebalance within 5 business days'
-    ],
-    timestamp: Date.now() - 120000,
     isLoading: false,
+    isError: false,
     error: null
   });
-
-  useEffect(() => {
-    const fetchAlignmentData = () => {
-      // In a real app, this would be an API call
-      setAlignmentData(prev => ({
-        ...prev,
-        timestamp: Date.now() - 120000
-      }));
-    };
-
-    fetchAlignmentData();
-    
-    // Refresh every 60 seconds
-    const interval = setInterval(fetchAlignmentData, 60000);
-    return () => clearInterval(interval);
-  }, []);
 
   return alignmentData;
 }
