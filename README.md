@@ -16,10 +16,12 @@ It combines:
 - Portfolio alignment scoring with transparent penalties
 
 into a unified decision framework.
-GrineOS is not a trading system or an optimizer  It is a decision framework for capital allocation.    
+
+GrineOS is not a trading system or an optimizer.
+It is a decision framework for capital allocation.    
 ## Why GrineOS Exists
 
-Capital allocation today is fragmented.
+Capital allocation today lacks a consistent framework.
 
 - Market regimes are identified inconsistently  
 - Allocation decisions are often discretionary or opaque  
@@ -89,6 +91,16 @@ Visit `http://localhost:3000`
 - 🚧 Production deployment
 - 📋 AI agent integration
 
+## Positioning
+
+GrineOS defines a structured framework for capital allocation.
+
+It sits above:
+- market data providers
+- index providers
+- asset managers
+
+and provides a consistent reference for allocation decisions across all of them.
 Built by [Kacy](https://github.com/kacygrine-cell) using Claude as the core technical execution layer.
 
 ## License
