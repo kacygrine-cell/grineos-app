@@ -2,7 +2,20 @@
 > The Operating System for Capital Allocation
 
 GrineOS is a doctrine-first portfolio allocation system that combines regime detection, strategic allocation, and alignment scoring into a unified decision-making framework.
+## What GrineOS Does
 
+GrineOS answers three critical questions for capital allocation:
+
+1. **What regime are we in?** → Real-time market state classification across 5 regimes
+2. **How should capital be allocated?** → Strategic weights within regime-appropriate constraint bands  
+3. **How aligned is a portfolio with that allocation?** → Transparent scoring with actionable adjustments
+
+It combines:
+- Regime detection using ensemble HMM methods
+- Constraint-based allocation optimization  
+- Portfolio alignment scoring with transparent penalties
+
+into a unified decision framework.
 ## Architecture
 grine_regime_engine  →  Backend Services  →  React Dashboard
 (detection)         (allocation +          (decision
