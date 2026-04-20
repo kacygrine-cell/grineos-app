@@ -1,6 +1,8 @@
 # GrineOS
 > The Operating System for Capital Allocation
 
+> GrineOS provides a consistent framework to define, evaluate, and adjust portfolio allocation across market regimes.
+
 GrineOS is a doctrine-first portfolio allocation system that combines regime detection, strategic allocation, and alignment scoring into a unified decision-making framework.
 ## What GrineOS Does
 
@@ -48,7 +50,7 @@ GrineOS transforms market data into a structured allocation decision:
 
 - **Regime Detection**: 5 market states (EXPANSION/BALANCED/TRANSITION/ENDURANCE/PROTECTION)
 - **Strategic Allocation**: Regime-based constraint bands with turnover management
-- **Alignment Scoring**: Transparent K1/K2 penalty system with 80/55 thresholds
+- **Alignment Scoring**: Transparent scoring system with clear thresholds and actionable adjustements
 - **Multi-tenant API**: FastAPI with Redis caching and PostgreSQL
 - **Editorial UI**: Typography-first React dashboard with Fraunces serif
 
@@ -100,9 +102,13 @@ It sits above:
 - index providers
 - asset managers
 
-and provides a consistent reference for allocation decisions across all of them.
+and provides a consistent reference layer for allocation decisions across all of them.
 
-Built by [Kacy](https://github.com/kacygrine-cell) using Claude as the core technical execution layer.
+Developed by Kacy.
+
+## Vision
+
+GrineOS aims to become a standard framework for capital allocation, where portfolios, mandates and strategies are evaluated relative to a common regime-based system.
 
 ## License
 
