@@ -101,6 +101,7 @@ It sits above:
 - asset managers
 
 and provides a consistent reference for allocation decisions across all of them.
+
 Built by [Kacy](https://github.com/kacygrine-cell) using Claude as the core technical execution layer.
 
 ## License
